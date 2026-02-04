@@ -145,6 +145,8 @@ OpenGLRenderer::~OpenGLRenderer()
 {
 	if(m_pipeline != 0)
 		glDeleteProgramPipelines(1, &m_pipeline);
+
+	glDeleteBuffers(1, &m_backbufferBlit_uniformBuffer);
 }
 
 OpenGLRenderer* OpenGLRenderer::GetInstance()
@@ -370,6 +372,10 @@ void OpenGLRenderer::Initialize()
 		glBindFramebuffer(GL_FRAMEBUFFER_EXT, glRendererState.clearFBO);
 		glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 	}
+
+	// create uniform buffers for backbufferblit
+	glCreateBuffers(1, &m_backbufferBlit_uniformBuffer);
+	glNamedBufferStorage(m_backbufferBlit_uniformBuffer, sizeof(RendererOutputShader::OutputUniformVariables), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
 	draw_init();
 
@@ -603,7 +609,12 @@ void OpenGLRenderer::DrawBackbufferQuad(LatteTextureView* texView, RendererOutpu
 	shader_unbind(RendererShader::ShaderType::kGeometry);
 	shader_bind(shader->GetVertexShader());
 	shader_bind(shader->GetFragmentShader());
-	shader->SetUniformParameters(*texView, {imageWidth, imageHeight});
+
+	// update and bind uniform buffer
+	auto uniformBuffer = shader->FillUniformBlockBuffer(*texView, {imageWidth, imageHeight}, padView);
+	glNamedBufferSubData(m_backbufferBlit_uniformBuffer, 0, sizeof(uniformBuffer), &uniformBuffer);
+
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_backbufferBlit_uniformBuffer);
 
 	// set viewport
 	glViewportIndexedf(0, imageX, imageY, imageWidth, imageHeight);
@@ -620,14 +631,12 @@ void OpenGLRenderer::DrawBackbufferQuad(LatteTextureView* texView, RendererOutpu
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, useLinearTexFilter ? GL_LINEAR : GL_NEAREST);
 	texViewGL->samplerState.filterMag = 0xFFFFFFFF;
 
-	if ((!padView && !LatteGPUState.tvBufferUsesSRGB) || (padView && !LatteGPUState.drcBufferUsesSRGB))
-		glDisable(GL_FRAMEBUFFER_SRGB);
+	glDisable(GL_FRAMEBUFFER_SRGB);
 
 	uint16 indexData[6] = { 0,1,2,3,4,5 };
 	glDrawRangeElements(GL_TRIANGLES, 0, 5, 6, GL_UNSIGNED_SHORT, indexData);
 
-	if ((!padView && !LatteGPUState.tvBufferUsesSRGB) || (padView && !LatteGPUState.drcBufferUsesSRGB))
-		glEnable(GL_FRAMEBUFFER_SRGB);
+	glEnable(GL_FRAMEBUFFER_SRGB);
 
 	// unbind texture
 	texture_bindAndActivate(nullptr, 0);

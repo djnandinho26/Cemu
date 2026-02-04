@@ -32,7 +32,7 @@ BreakpointWindow::BreakpointWindow(DebuggerWindow2& parent, const wxPoint& main_
 	
 	wxBoxSizer* main_sizer = new wxBoxSizer(wxVERTICAL);
 
-	m_breakpoints = new wxListView(this, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+	m_breakpoints = new wxListView(this, wxID_ANY);
 	m_breakpoints->EnableCheckBoxes(true);
 	
 	wxListItem col0;
@@ -153,7 +153,7 @@ void BreakpointWindow::OnBreakpointToggled(wxListEvent& event)
 		const bool state = m_breakpoints->IsItemChecked(index);
 		wxString line = m_breakpoints->GetItemText(index, ColumnAddress);
 		DebuggerBreakpoint* bp = (DebuggerBreakpoint*)m_breakpoints->GetItemData(index);
-		const uint32 address = std::stoul(line.c_str().AsChar(), nullptr, 16);
+		const uint32 address = std::stoul(line.ToStdString(), nullptr, 16);
 		debugger_toggleBreakpoint(address, state, bp);
 		m_breakpoints->CheckItem(index, state);
 	}
@@ -223,7 +223,7 @@ void BreakpointWindow::OnRightDown(wxMouseEvent& event)
 		menu.Append(MENU_ID_CREATE_MEM_BP_READ, _("Create memory breakpoint (read)"));
 		menu.Append(MENU_ID_CREATE_MEM_BP_WRITE, _("Create memory breakpoint (write)"));
 
-		menu.Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(BreakpointWindow::OnContextMenuClick), nullptr, this);
+		menu.Bind(wxEVT_COMMAND_MENU_SELECTED, &BreakpointWindow::OnContextMenuClick, this);
 		PopupMenu(&menu);
 	}
 	else
@@ -234,7 +234,7 @@ void BreakpointWindow::OnRightDown(wxMouseEvent& event)
 		wxMenu menu;
 		menu.Append(MENU_ID_DELETE_BP, _("Delete breakpoint"));
 
-		menu.Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(BreakpointWindow::OnContextMenuClickSelected), nullptr, this);
+		menu.Bind(wxEVT_COMMAND_MENU_SELECTED, &BreakpointWindow::OnContextMenuClickSelected, this);
 		PopupMenu(&menu);
 	}
 }

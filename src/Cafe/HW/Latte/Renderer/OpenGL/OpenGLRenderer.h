@@ -209,6 +209,9 @@ private:
 	sint32 activeTextureUnit = 0;
 	void* m_latteBoundTextures[Latte::GPU_LIMITS::NUM_TEXTURES_PER_STAGE * 3]{};
 
+	// backbuffer blit
+	GLuint m_backbufferBlit_uniformBuffer;
+
 	// attribute stream
 	GLuint glAttributeCacheAB{};
 	GLuint _boundArrayBuffer{};
@@ -270,11 +273,11 @@ private:
 	// occlusion queries
 	std::vector<class LatteQueryObjectGL*> list_queryCacheOcclusion; // cache for unused queries
 
-	// resource garbage collection	
+	// resource garbage collection
 	struct BufferCacheReleaseQueueEntry
 	{
 		BufferCacheReleaseQueueEntry(VirtualBufferHeap_t* heap, VirtualBufferHeapEntry_t* entry) : m_heap(heap), m_entry(entry) {};
-		
+
 		void free()
 		{
 			virtualBufferHeap_free(m_heap, m_entry);

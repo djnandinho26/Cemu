@@ -27,7 +27,7 @@ GameProfileWindow::GameProfileWindow(wxWindow* parent, uint64_t title_id)
 
 	auto* main_sizer = new wxBoxSizer(wxVERTICAL);
 
-	auto* m_notebook = new wxNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0);
+	auto* m_notebook = new wxNotebook(this, wxID_ANY);
 	// general
 	{
 		auto* panel = new wxPanel(m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
@@ -61,7 +61,7 @@ GameProfileWindow::GameProfileWindow(wxWindow* parent, uint64_t title_id)
 			const sint32 m_cpu_modeNChoices = std::size(cpu_modes);
 			m_cpu_mode = new wxChoice(box, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_cpu_modeNChoices, cpu_modes, 0);
 			m_cpu_mode->SetToolTip(_("Set the CPU emulation mode"));
-			first_row->Add(m_cpu_mode, 0, wxALL, 5);		
+			first_row->Add(m_cpu_mode, 0, wxALL, 5);
 
 			first_row->Add(new wxStaticText(box, wxID_ANY, _("Thread quantum")), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
 
@@ -112,16 +112,43 @@ GameProfileWindow::GameProfileWindow(wxWindow* parent, uint64_t title_id)
 
 		first_row->Add(new wxStaticText(panel, wxID_ANY, _("Graphics API")), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
 
-		wxString gapi_values[] = { "", "OpenGL", "Vulkan" };
+		wxString gapi_values[] = { "", "OpenGL", "Vulkan",
+#if ENABLE_METAL
+            "Metal"
+#endif
+		};
 		m_graphic_api = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, (int)std::size(gapi_values), gapi_values);
 		first_row->Add(m_graphic_api, 0, wxALL, 5);
-		
+
 		first_row->Add(new wxStaticText(panel, wxID_ANY, _("Shader multiplication accuracy")), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
 
 		wxString mul_values[] = { _("false"), _("true")};
 		m_shader_mul_accuracy = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, (int)std::size(mul_values), mul_values);
 		m_shader_mul_accuracy->SetToolTip(_("EXPERT OPTION\nControls the accuracy of floating point multiplication in shaders.\n\nRecommended: true"));
 		first_row->Add(m_shader_mul_accuracy, 0, wxALL, 5);
+
+#if ENABLE_METAL
+		first_row->Add(new wxStaticText(panel, wxID_ANY, _("Shader fast math")), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+
+		wxString math_values[] = { _("false"), _("true") };
+		m_shader_fast_math = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, (int)std::size(math_values), math_values);
+		m_shader_fast_math->SetToolTip(_("EXPERT OPTION\nEnables fast math for all shaders. May (rarely) cause graphical bugs.\n\nMetal only\n\nRecommended: true"));
+		first_row->Add(m_shader_fast_math, 0, wxALL, 5);
+
+		first_row->Add(new wxStaticText(panel, wxID_ANY, _("Metal buffer cache mode")), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+
+		wxString cache_values[] = { _("auto"), _("device private"), _("device shared"), _("host") };
+		m_metal_buffer_cache_mode = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, (int)std::size(cache_values), cache_values);
+		m_metal_buffer_cache_mode->SetToolTip(_("EXPERT OPTION\nDecides how the buffer cache memory will be managed.\n\nMetal only\n\nRecommended: auto"));
+		first_row->Add(m_metal_buffer_cache_mode, 0, wxALL, 5);
+
+		first_row->Add(new wxStaticText(panel, wxID_ANY, _("Position invariance")), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
+
+		wxString pos_values[] = { _("auto"), _("false"), _("true") };
+		m_position_invariance = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize, (int)std::size(pos_values), pos_values);
+		m_position_invariance->SetToolTip(_("EXPERT OPTION\nDisables most optimizations for vertex positions. May fix polygon cutouts or flickering in some games.\n\nMetal only\n\nRecommended: auto"));
+		first_row->Add(m_position_invariance, 0, wxALL, 5);
+#endif
 
 		/*first_row->Add(new wxStaticText(panel, wxID_ANY, _("GPU buffer cache accuracy")), 0, wxALIGN_CENTER_VERTICAL | wxALL, 5);
 		wxString accuarcy_values[] = { _("high"), _("medium"), _("low") };
@@ -223,7 +250,7 @@ void GameProfileWindow::OnControllerProfileDropdown(wxCommandEvent& event)
 	auto profiles = InputManager::get_profiles();
 	for (const auto& profile : profiles)
 	{
-		cb->Append(to_wxString(profile));
+		cb->Append(wxString::FromUTF8(profile));
 	}
 
 	cb->SetStringSelection(selected_value);
@@ -249,7 +276,7 @@ void GameProfileWindow::ApplyProfile()
 	// general
 	m_load_libs->SetValue(m_game_profile.m_loadSharedLibraries.value());
 	m_start_with_padview->SetValue(m_game_profile.m_startWithPadView);
-		
+
 	// cpu
 	// wxString cpu_modes[] = { _("Singlecore-Interpreter"), _("Singlecore-Recompiler"), _("Triplecore-Recompiler"), _("Auto (recommended)") };
 	switch(m_game_profile.m_cpuMode.value())
@@ -258,30 +285,35 @@ void GameProfileWindow::ApplyProfile()
 	case CPUMode::SinglecoreRecompiler: m_cpu_mode->SetSelection(1); break;
 	case CPUMode::DualcoreRecompiler: m_cpu_mode->SetSelection(2); break;
 	case CPUMode::MulticoreRecompiler: m_cpu_mode->SetSelection(2); break;
-	default: m_cpu_mode->SetSelection(3); 
+	default: m_cpu_mode->SetSelection(3);
 	}
-	
+
 	m_thread_quantum->SetStringSelection(fmt::format("{}", m_game_profile.m_threadQuantum));
 
 	// gpu
 	if (!m_game_profile.m_graphics_api.has_value())
 		m_graphic_api->SetSelection(0); // selecting ""
 	else
-		m_graphic_api->SetSelection(1 + m_game_profile.m_graphics_api.value()); // "", OpenGL, Vulkan
+		m_graphic_api->SetSelection(1 + m_game_profile.m_graphics_api.value()); // "", OpenGL, Vulkan, Metal
 	m_shader_mul_accuracy->SetSelection((int)m_game_profile.m_accurateShaderMul);
+#if ENABLE_METAL
+	m_shader_fast_math->SetSelection((int)m_game_profile.m_shaderFastMath);
+	m_metal_buffer_cache_mode->SetSelection((int)m_game_profile.m_metalBufferCacheMode);
+	m_position_invariance->SetSelection((int)m_game_profile.m_positionInvariance);
+#endif
 
 	//// audio
 	//m_disable_audio->Set3StateValue(GetCheckboxState(m_game_profile.disableAudio));
 
 	// controller
 	auto profiles = InputManager::get_profiles();
-	
+
 	for (const auto& cb : m_controller_profile)
 	{
 		cb->Clear();
 		for (const auto& profile : profiles)
 		{
-			cb->Append(to_wxString(profile));
+			cb->Append(wxString::FromUTF8(profile));
 		}
 	}
 
@@ -293,7 +325,7 @@ void GameProfileWindow::ApplyProfile()
 			const auto& v = m_game_profile.m_controllerProfile[i].value();
 			m_controller_profile[i]->SetStringSelection(wxString::FromUTF8(v));
 		}
-			
+
 		else
 			m_controller_profile[i]->SetSelection(wxNOT_FOUND);
 	}
@@ -317,7 +349,7 @@ void GameProfileWindow::SaveProfile()
 		m_game_profile.m_cpuMode = CPUMode::Auto;
 	}
 
-	
+
 	const wxString thread_quantum = m_thread_quantum->GetStringSelection();
 	if (!thread_quantum.empty())
 	{
@@ -330,11 +362,16 @@ void GameProfileWindow::SaveProfile()
 	m_game_profile.m_accurateShaderMul = (AccurateShaderMulOption)m_shader_mul_accuracy->GetSelection();
 	if (m_game_profile.m_accurateShaderMul != AccurateShaderMulOption::False && m_game_profile.m_accurateShaderMul != AccurateShaderMulOption::True)
 		m_game_profile.m_accurateShaderMul = AccurateShaderMulOption::True; // force a legal value
+#if ENABLE_METAL
+	m_game_profile.m_shaderFastMath = (bool)m_shader_fast_math->GetSelection();
+	m_game_profile.m_metalBufferCacheMode = (MetalBufferCacheMode)m_metal_buffer_cache_mode->GetSelection();
+	m_game_profile.m_positionInvariance = (PositionInvariance)m_position_invariance->GetSelection();
+#endif
 
 	if (m_graphic_api->GetSelection() == 0)
 		m_game_profile.m_graphics_api = {};
 	else
-		m_game_profile.m_graphics_api = (GraphicAPI)(m_graphic_api->GetSelection() - 1);  // "", OpenGL, Vulkan
+		m_game_profile.m_graphics_api = (GraphicAPI)(m_graphic_api->GetSelection() - 1);  // "", OpenGL, Vulkan, Metal
 
 	// controller
 	for (int i = 0; i < 8; ++i)

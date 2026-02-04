@@ -25,7 +25,10 @@
     "boost-property-tree",
     "boost-static-string",
     "boost-random",
-    "fmt",
+    {
+      "name": "fmt",
+      "version>=": "12.1.0"
+    },
     "hidapi",
     "libpng",
     "glm",
@@ -34,13 +37,7 @@
       "default-features": false
     },
     "zstd",
-    {
-      "name": "wxwidgets",
-      "features": [
-        "debug-support"
-      ],
-      "default-features": false
-    },
+    "wxwidgets",
     "openssl",
     {
       "name": "curl",
@@ -71,7 +68,7 @@
     },
     {
       "name": "sdl2",
-      "version": "2.30.3"
+      "version": "2.32.10"
     },
     {
       "name": "wxwidgets",

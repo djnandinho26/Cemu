@@ -71,6 +71,7 @@ public:
 	[[nodiscard]] bool IsGameLaunched() const { return m_game_launched; }
 
 	void SetFullScreen(bool state);
+	void EndEmulation();
 	void SetMenuVisible(bool state);
 	void UpdateNFCMenu();
 	bool IsMenuHidden() const;
@@ -94,6 +95,7 @@ public:
 	void OnClose(wxCloseEvent& event);
 	void OnFileMenu(wxCommandEvent& event);
 	void OnOpenFolder(wxCommandEvent& event);
+	void OnClearSpotPassCache(wxCommandEvent& event);
 	void OnLaunchFromFile(wxLaunchGameEvent& event);
 	void OnInstallUpdate(wxCommandEvent& event);
 	void OnFileExit(wxCommandEvent& event);

@@ -409,22 +409,19 @@ namespace snd_core
 			catch (std::runtime_error& ex)
 			{
 				cemuLog_log(LogType::Force, "can't initialize tv audio: {}", ex.what());
-				exit(0);
 			}
 		}
 
+		g_padVolume = GetConfig().pad_volume;
 		if (!g_padAudio)
 		{
 			try
 			{
 				g_padAudio = IAudioAPI::CreateDeviceFromConfig(IAudioAPI::AudioType::Gamepad, 48000, snd_core::AX_SAMPLES_PER_3MS_48KHZ * AX_FRAMES_PER_GROUP, 16);
-				if(g_padAudio)
-					g_padVolume = g_padAudio->GetVolume();
 			}
 			catch (std::runtime_error& ex)
 			{
 				cemuLog_log(LogType::Force, "can't initialize pad audio: {}", ex.what());
-				exit(0);
 			}
 		}
 	}
